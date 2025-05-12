@@ -31,7 +31,7 @@ function Page1() {
     const newMessage = {
       text: input,
       videoUrl: randomVideo,
-      showResult: false
+      showResult: true // ← 초기부터 결과 표시
     };
 
     setMessages((prev) => [...prev, newMessage]);
@@ -69,15 +69,6 @@ function Page1() {
           <div key={idx} className="page1-chat-message">
             <p>{msg.text}</p>
 
-            <div className="page1-result-button-wrapper">
-              <button
-                className="page1-view-result-btn"
-                onClick={() => toggleResult(idx)}
-              >
-                {msg.showResult ? "결과 닫기" : "결과 보기"}
-              </button>
-            </div>
-
             {msg.showResult && (
               <div className="page1-video-wrapper">
                 <iframe
@@ -90,6 +81,15 @@ function Page1() {
                 ></iframe>
               </div>
             )}
+
+            <div className="page1-result-button-wrapper">
+              <button
+                className="page1-view-result-btn"
+                onClick={() => toggleResult(idx)}
+              >
+                {msg.showResult ? "결과 닫기" : "결과 보기"}
+              </button>
+            </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
