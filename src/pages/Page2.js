@@ -1,6 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
-import './Page2.css';
-import { FaPaperPlane } from 'react-icons/fa';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Box,
+  IconButton,
+  TextField,
+  Typography,
+  Paper,
+  CircularProgress,
+} from '@mui/material';
+import { ChatBubble, Refresh, Send } from '@mui/icons-material';
+import './Page2.css'; // 외부 CSS 파일 import
 
 function Page2() {
   const [input, setInput] = useState('');
@@ -40,7 +48,7 @@ function Page2() {
           idx === prev.length - 1 ? { ...item, poem: generatedPoem } : item
         )
       );
-    }, 1000);
+    }, 1500);
 
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,49 +63,65 @@ function Page2() {
   };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversations]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, []);
 
   return (
-    <div className="page2-chat-container">
-      <div className="page2-chat-header">
-        <h2>시 생성</h2>
-        <button className="page2-reset-btn" onClick={handleReset}>리셋</button>
-      </div>
+    <Box className="page2-container">
+      <Box className="page2-top-toolbar">
+        <Box className="page2-toolbar-left">
+          <ChatBubble sx={{ fontSize: 15 }} />
+          <Typography variant="subtitle1" fontSize={14}>시 생성</Typography>
+        </Box>
+        <IconButton onClick={handleReset} className="page2-reset-button">
+          <Refresh fontSize="small" />
+        </IconButton>
+      </Box>
 
-      <div className="page2-chat-messages">
-        {conversations.map((conv, idx) => (
-          <div key={idx} className="conversation-block">
-            <div className="chat-message user-message">
-              <div className="bubble">{conv.user}</div>
-            </div>
-            <div className="chat-message bot-message">
-              <div className="bubble">
+      <Box className="page2-messages-container">
+        <Box className="page2-messages-inner">
+          {conversations.map((conv, idx) => (
+            <Box key={idx} className="page2-message-block">
+              <Box className="page2-user-message">
+                <Paper elevation={0} className="page2-message-paper-user">
+                  <Typography className="page2-message-text">{conv.user}</Typography>
+                </Paper>
+              </Box>
+
+              <Box className="page2-response-message">
                 {conv.poem ? (
-                  conv.poem
+                  <Paper elevation={0} className="page2-message-paper-bot">
+                    <Typography className="page2-message-text">{conv.poem}</Typography>
+                  </Paper>
                 ) : (
-                  <span style={{ color: '#888', fontStyle: 'italic' }}>시를 생성 중입니다</span>
+                  <Box className="page2-loading-box">
+                    <CircularProgress size={36} sx={{ color: '#e5d9fc' }} />
+                  </Box>
                 )}
-              </div>
-            </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
+              </Box>
+            </Box>
+          ))}
+          <div ref={messagesEndRef} />
+        </Box>
+      </Box>
 
-      <form onSubmit={handleSubmit} className="page2-chat-input-form">
-        <textarea
+      <Box component="form" onSubmit={handleSubmit} className="page2-input-box">
+        <TextField
+          variant="standard"
+          placeholder="일상어를 입력하세요"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="일상어를 입력하세요"
-          rows="2"
-          required
+          multiline
+          maxRows={4}
+          fullWidth
+          InputProps={{ disableUnderline: true }}
+          className="page2-input-text"
         />
-        <button type="submit">
-          <FaPaperPlane />
-        </button>
-      </form>
-    </div>
+        <IconButton type="submit">
+          <Send fontSize="small" sx={{ color: input.trim() ? '#7c3aed' : '#f9efff' }} />
+        </IconButton>
+      </Box>
+    </Box>
   );
 }
 

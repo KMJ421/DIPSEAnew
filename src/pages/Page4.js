@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Page4.css';
+import ClipLoader from 'react-spinners/ClipLoader';
 
 function Page4() {
   const [messages, setMessages] = useState(() => {
@@ -9,6 +10,7 @@ function Page4() {
 
   const [isRecording, setIsRecording] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState(null);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const videoUrls = [
@@ -18,66 +20,77 @@ function Page4() {
     "https://www.youtube.com/embed/XJ9Vylyk5Uw",
   ];
 
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   useEffect(() => {
     sessionStorage.setItem('Page4Messages', JSON.stringify(messages));
+    scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, []);
+
+  useEffect(() => {
+    if (loading) {
+      scrollToBottom();
+    }
+  }, [loading]);
 
   const addMessage = (text) => {
     const randomVideo = videoUrls[Math.floor(Math.random() * videoUrls.length)];
     const newMessage = {
       text,
       videoUrl: randomVideo,
-      showResult: true, // 처음부터 결과 보이도록
+      showResult: true,
     };
     setMessages((prev) => [...prev, newMessage]);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
   };
 
-  const toggleResult = (index) => {
-    setMessages((prev) =>
-      prev.map((msg, i) =>
-        i === index ? { ...msg, showResult: !msg.showResult } : msg
-      )
-    );
-  };
+  const uploadAudioToServer = async (blob) => {
+    const formData = new FormData();
+    formData.append('file', blob, `recording_${Date.now()}.wav`);
+    setLoading(true);
 
-  const handleReset = () => {
-    if (window.confirm('정말 초기화하시겠습니까?')) {
-      setMessages([]);
-      sessionStorage.removeItem('Page4Messages');
+    try {
+      const res = await fetch('http://localhost:5000/stt-transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('STT 변환 실패');
+
+      const data = await res.json();
+      if (data.transcript) {
+        addMessage(data.transcript);
+      } else {
+        addMessage(`오류: ${data.error}`);
+        console.error('변환 실패:', data.error);
+      }
+    } catch (err) {
+      console.error('업로드/변환 실패:', err);
+      addMessage(`오류: ${err.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleVoiceRecognition = async () => {
+  const toggleVoiceRecording = async () => {
     if (isRecording) {
+      window.recognition?.stop();
+      window.mediaRecorder?.stop();
       setIsRecording(false);
-      return; // 이 로직에선 stop이 필요 없음
+      return;
     }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       const audioChunks = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunks.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunks, { type: 'audio/wav' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `recording_${Date.now()}.wav`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        stream.getTracks().forEach(track => track.stop());
-      };
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -92,25 +105,58 @@ function Page4() {
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          addMessage(transcript);
-        }
+        console.log("브라우저 인식 결과:", transcript);
       };
 
       recognition.onerror = (event) => {
-        alert("음성 인식 오류: " + event.error);
+        console.error("인식 오류:", event.error);
+        recognition.stop();
+        setIsRecording(false);
       };
 
       recognition.onend = () => {
-        mediaRecorder.stop();
+        if (mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+      };
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunks.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        stream.getTracks().forEach((track) => track.stop());
+        await uploadAudioToServer(blob);
         setIsRecording(false);
       };
+
+      window.mediaRecorder = mediaRecorder;
+      window.recognition = recognition;
 
       mediaRecorder.start();
       recognition.start();
       setIsRecording(true);
     } catch (err) {
       alert("녹음 오류: " + err.message);
+      setIsRecording(false);
+    }
+  };
+
+  const toggleResult = (index) => {
+    setMessages((prev) =>
+      prev.map((msg, i) =>
+        i === index ? { ...msg, showResult: !msg.showResult } : msg
+      )
+    );
+  };
+
+  const handleReset = () => {
+    if (window.confirm('정말 초기화하시겠습니까?')) {
+      setMessages([]);
+      sessionStorage.removeItem('Page4Messages');
     }
   };
 
@@ -132,7 +178,7 @@ function Page4() {
   return (
     <div className="Page4-chat-container">
       <div className="Page4-chat-header">
-        <h2>음성 → 영상 + TTS</h2>
+        <h2>음성 → 텍스트 + 업로드 + TTS</h2>
         <button className="Page4-reset-btn" onClick={handleReset}>리셋</button>
       </div>
 
@@ -154,7 +200,8 @@ function Page4() {
                 {msg.showResult ? "결과 닫기" : "결과 보기"}
               </button>
             </div>
-            {msg.showResult && (
+
+            {msg.showResult && msg.videoUrl && (
               <div className="Page4-video-wrapper">
                 <iframe
                   width="100%"
@@ -168,13 +215,21 @@ function Page4() {
             )}
           </div>
         ))}
+
+        {loading && (
+          <div className="Page4-loading">
+            <ClipLoader color="#7e7b7b" loading={true} size={80} />
+            <p>결과 생성 중입니다</p>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
       <div className="Page4-voice-input-area">
         <button
           className={`Page4-mic-btn ${isRecording ? 'recording' : ''}`}
-          onClick={toggleVoiceRecognition}
+          onClick={toggleVoiceRecording}
         >
           {isRecording ? '🛑 종료' : '🎤 말하기'}
         </button>

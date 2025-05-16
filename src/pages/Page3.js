@@ -1,4 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  Box,
+  IconButton,
+  Typography,
+  Paper,
+  Button,
+  CircularProgress,
+} from '@mui/material';
+import { Mic, Refresh, ExpandMore } from '@mui/icons-material';
 import './Page3.css';
 
 function Page3() {
@@ -8,9 +17,10 @@ function Page3() {
   });
 
   const [isRecording, setIsRecording] = useState(false);
-  const [speakingIndex, setSpeakingIndex] = useState(null); // 현재 TTS 실행중인 index
-  const recognitionRef = useRef(null);
+  const [speakingIndex, setSpeakingIndex] = useState(null);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const prevMessagesLength = useRef(messages.length);
 
   const videoUrls = [
     "https://www.youtube.com/embed/hlWiI4xVXKY",
@@ -20,30 +30,93 @@ function Page3() {
   ];
 
   useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, []);
+
+  useEffect(() => {
+    const isNewMessageAdded = messages.length > prevMessagesLength.current;
+    if (isNewMessageAdded) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+    prevMessagesLength.current = messages.length;
     sessionStorage.setItem('page3Messages', JSON.stringify(messages));
   }, [messages]);
 
+  useEffect(() => {
+    if (loading) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [loading]);
+
   const addMessage = (text) => {
     const randomVideo = videoUrls[Math.floor(Math.random() * videoUrls.length)];
+    setMessages((prev) => [...prev, { text, videoUrl: randomVideo, showResult: true }]);
+  };
 
-    const newMessage = {
-      text,
-      videoUrl: randomVideo,
-      showResult: false,
-    };
+  const uploadAudioToServer = async (blob) => {
+    const formData = new FormData();
+    formData.append('file', blob, `recording_${Date.now()}.wav`);
+    setLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/stt-transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error('STT 변환 실패');
+      const data = await res.json();
+      addMessage(data.transcript || `오류: ${data.error}`);
+    } catch (err) {
+      addMessage(`오류: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setMessages((prev) => [...prev, newMessage]);
+  const toggleVoiceRecording = async () => {
+    if (isRecording) {
+      window.recognition?.stop();
+      window.mediaRecorder?.stop();
+      setIsRecording(false);
+      return;
+    }
 
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return alert("브라우저가 음성 인식을 지원하지 않습니다.");
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'ko-KR';
+      recognition.onresult = (e) => console.log("브라우저 인식:", e.results[0][0].transcript);
+      recognition.onerror = (e) => { console.error("인식 오류:", e.error); recognition.stop(); setIsRecording(false); };
+      recognition.onend = () => mediaRecorder.state !== 'inactive' && mediaRecorder.stop();
+
+      mediaRecorder.ondataavailable = (e) => e.data.size > 0 && audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/wav' });
+        stream.getTracks().forEach(track => track.stop());
+        await uploadAudioToServer(blob);
+        setIsRecording(false);
+      };
+
+      window.mediaRecorder = mediaRecorder;
+      window.recognition = recognition;
+
+      mediaRecorder.start();
+      recognition.start();
+      setIsRecording(true);
+    } catch (err) {
+      alert("녹음 오류: " + err.message);
+      setIsRecording(false);
+    }
   };
 
   const toggleResult = (index) => {
     setMessages((prev) =>
-      prev.map((msg, i) =>
-        i === index ? { ...msg, showResult: !msg.showResult } : msg
-      )
+      prev.map((msg, i) => i === index ? { ...msg, showResult: !msg.showResult } : msg)
     );
   };
 
@@ -51,45 +124,6 @@ function Page3() {
     if (window.confirm('정말 초기화하시겠습니까?')) {
       setMessages([]);
       sessionStorage.removeItem('page3Messages');
-    }
-  };
-
-  const toggleVoiceRecognition = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("이 브라우저는 음성 인식을 지원하지 않습니다.");
-      return;
-    }
-
-    if (!recognitionRef.current) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.lang = 'ko-KR';
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.maxAlternatives = 1;
-
-      recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          addMessage(transcript);
-        }
-      };
-
-      recognitionRef.current.onerror = (event) => {
-        alert("음성 인식 중 오류가 발생했습니다: " + event.error);
-        setIsRecording(false);
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
-    }
-
-    if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
     }
   };
 
@@ -101,7 +135,7 @@ function Page3() {
     } else {
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'ko-KR';
-      synth.cancel(); // 기존 재생 중지
+      synth.cancel();
       synth.speak(utterance);
       setSpeakingIndex(index);
       utterance.onend = () => setSpeakingIndex(null);
@@ -109,59 +143,70 @@ function Page3() {
   };
 
   return (
-    <div className="page3-chat-container">
-      <div className="page3-chat-header">
-        <h2>동영상 & 시 음성</h2>
-        <button className="page3-reset-btn" onClick={handleReset}>리셋</button>
-      </div>
+    <Box className="page3-container">
+      <Box className="page3-top-toolbar">
+        <Box className="page3-toolbar-left">
+          <Mic fontSize="small" />
+          <Typography variant="subtitle1" fontSize={14}>음성 변환</Typography>
+        </Box>
+        <IconButton onClick={handleReset} className="page3-reset-button">
+          <Refresh fontSize="small" />
+        </IconButton>
+      </Box>
 
-      <div className="page3-chat-messages">
-        {messages.map((msg, idx) => (
-          <div key={idx} className="page3-chat-message">
-            <p>{msg.text}</p>
+      <Box className="page3-messages-container">
+        <Box className="page3-messages-inner">
+          {messages.map((msg, idx) => (
+            <Box key={idx} className="page3-message-block">
+              <Paper elevation={0} className="page3-message-paper">
+                <Typography className="page3-message-text">{msg.text}</Typography>
+              </Paper>
+              <Box className="page3-button-row">
+                <Button onClick={() => handleTTS(msg.text, idx)} className="page3-listen-button" variant="contained">
+                  {speakingIndex === idx ? '🔊 중지' : '🔊 듣기'}
+                </Button>
+              </Box>
+              {msg.showResult && msg.videoUrl && (
+                <Box className="page3-video-container">
+                  <iframe
+                    width="100%" height="300"
+                    src={msg.videoUrl}
+                    title="추천 동영상"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen style={{ border: 'none' }}
+                  />
+                </Box>
+              )}
+              <Box className="page3-toggle-button">
+                <IconButton size="small" onClick={() => toggleResult(idx)} style={{
+                  transform: msg.showResult ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.3s', color: '#555',
+                }}>
+                  <ExpandMore fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+          ))}
+          {loading && (
+            <Box className="page3-loading-container">
+              <CircularProgress size={64} sx={{ color: '#e5d9fc' }} />
+            </Box>
+          )}
+          <div ref={messagesEndRef} />
+        </Box>
+      </Box>
 
-            <div className="page3-result-button-wrapper">
-              <button
-                className="page3-tts-btn"
-                onClick={() => handleTTS(msg.text, idx)}
-              >
-                {speakingIndex === idx ? "🔊 중지" : "🔊 듣기"}
-              </button>
-
-              <button
-                className="page3-view-result-btn"
-                onClick={() => toggleResult(idx)}
-              >
-                {msg.showResult ? "결과 닫기" : "결과 보기"}
-              </button>
-            </div>
-
-            {msg.showResult && (
-              <div className="page3-video-wrapper">
-                <iframe
-                  width="100%"
-                  height="300"
-                  src={msg.videoUrl}
-                  title="추천 동영상"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-            )}
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div className="page3-voice-input-area">
-        <button
-          className={`page3-mic-btn ${isRecording ? 'recording' : ''}`}
-          onClick={toggleVoiceRecognition}
+      <Box className="page3-record-button-container">
+        <Button
+          onClick={toggleVoiceRecording}
+          variant="contained"
+          className="page3-record-button"
+          color={isRecording ? 'error' : 'primary'}
         >
           {isRecording ? '🛑 종료' : '🎤 말하기'}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Box>
+    </Box>
   );
 }
 
