@@ -23,10 +23,24 @@ function Page3() {
   const prevMessagesLength = useRef(messages.length);
 
   const videoUrls = [
-    "https://www.youtube.com/embed/hlWiI4xVXKY",
+    /*"https://www.youtube.com/embed/hlWiI4xVXKY",
     "https://www.youtube.com/embed/UFLyhzlG8FQ",
     "https://www.youtube.com/embed/n3McD-676Jw",
     "https://www.youtube.com/embed/XJ9Vylyk5Uw",
+    "/videos/happy.mp4",
+    "/videos/sad.mp4",*/
+    "/videos/기쁨평온.mp4"
+  ];
+
+  const dummyPoems = [
+    /*"햇살이 흐드러진 오후,\n그대 향한 그리움이 피어난다.",
+    "고요한 새벽 창가에서\n작은 숨결이 시가 된다.",
+    "시간은 흐르고\n기억은 시처럼 남는다.",
+    "낙엽 지는 골목길,\n사랑이 조용히 울고 있었다.",
+    "외로운 달빛 아래,\n마음이 잔잔히 젖어든다.",
+    "햇살이 오늘은\n유난히 나를 감싸안는다.  \n바람도 웃고,\n내 마음도 춤춘다.",
+    "창밖엔 비가 내리고\n내 안에도 조용히 흐른다.\n말없이 고개 숙인 마음,\n누군가 알아주기를 바란다.",*/
+    "가볍다\n마음이\n아무 이유 없이\n바람도 빛도\n그냥 다 좋다"
   ];
 
   useEffect(() => {
@@ -48,9 +62,13 @@ function Page3() {
     }
   }, [loading]);
 
-  const addMessage = (text) => {
+  const addMessage = (userText) => {
+    const randomPoem = dummyPoems[Math.floor(Math.random() * dummyPoems.length)];
     const randomVideo = videoUrls[Math.floor(Math.random() * videoUrls.length)];
-    setMessages((prev) => [...prev, { text, videoUrl: randomVideo, showResult: true }]);
+    setMessages((prev) => [
+      ...prev,
+      { user: userText, poem: randomPoem, videoUrl: randomVideo, showResult: true }
+    ]);
   };
 
   const uploadAudioToServer = async (blob) => {
@@ -159,22 +177,34 @@ function Page3() {
           {messages.map((msg, idx) => (
             <Box key={idx} className="page3-message-block">
               <Paper elevation={0} className="page3-message-paper">
-                <Typography className="page3-message-text">{msg.text}</Typography>
+                <Typography className="page3-message-text">{msg.user}</Typography>
               </Paper>
+              <Box className="page3-response-message">
+                <Paper elevation={0} className="page3-message-paper-bot">
+                  <Typography className="page3-message-text">{msg.poem}</Typography>
+                </Paper>
+              </Box>
               <Box className="page3-button-row">
-                <Button onClick={() => handleTTS(msg.text, idx)} className="page3-listen-button" variant="contained">
+                <Button onClick={() => handleTTS(msg.user, idx)} className="page3-listen-button" variant="contained">
                   {speakingIndex === idx ? '🔊 중지' : '🔊 듣기'}
                 </Button>
               </Box>
               {msg.showResult && msg.videoUrl && (
                 <Box className="page3-video-container">
-                  <iframe
-                    width="100%" height="300"
+                  {/*<iframe
+                    width="100%" height="350"
                     src={msg.videoUrl}
                     title="추천 동영상"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen style={{ border: 'none' }}
-                  />
+                  />*/}
+                  <video
+                  controls
+                  style={{ borderRadius: '12px', maxWidth: '100%' }}
+                  >
+                    <source src={msg.videoUrl} type="video/mp4" />
+                    브라우저가 video 태그를 지원하지 않습니다.
+                  </video>
                 </Box>
               )}
               <Box className="page3-toggle-button">

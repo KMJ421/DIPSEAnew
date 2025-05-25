@@ -42,9 +42,10 @@ function IntroPage() {
         <div className="intro-text-block">
           <h2 className="intro-highlight">음성 입력으로 시각적 콘텐츠까지 자동으로</h2>
           <p className="intro-description">
-            마이크로 음성을 녹음하면 <strong>텍스트로 변환</strong>해주고,
-            텍스트를 분석하여 <strong>감정이 들어간 음성</strong>을 들려주고,
-            감성에 맞는 <strong>영상</strong>까지 추천해주는 기능입니다.
+            마이크를 눌러 말을 하면 해당 음성의 <strong>감정을 분석</strong>하고,
+            분석한 감정에 맞게 <strong>시를 생성</strong>하고,
+            감정을 담아 <strong>시를 낭독</strong>해주고,
+            이를 바탕으로 감성에 맞는 <strong>영상</strong>까지 생성해 줍니다.
           </p>
           <button onClick={() => navigate('/page3')}>🎤 음성 변환</button>
         </div>

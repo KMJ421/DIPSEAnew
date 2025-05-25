@@ -140,3 +140,27 @@
 .page3-record-button:hover {
   background-color: #e5d9fc !important;
 }
+
+.page3-response-message {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 16px;
+}
+
+.page3-message-paper-bot {
+  background-color: #ffffff !important;
+  padding: 12px 16px !important;
+  max-width: 50% !important;
+  width: fit-content !important;
+  border-top-left-radius: 20px !important;
+  border-top-right-radius: 20px !important;
+  border-bottom-left-radius: 4px !important;
+  border-bottom-right-radius: 20px !important;
+}
+
+.page3-message-text {
+  white-space: pre-line;
+  font-size: 15px !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}

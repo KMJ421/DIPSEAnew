@@ -20,10 +20,13 @@ function Page1() {
   const messagesEndRef = useRef(null);
 
   const videoUrls = [
-    'https://www.youtube.com/embed/hlWiI4xVXKY',
-    'https://www.youtube.com/embed/UFLyhzlG8FQ',
-    'https://www.youtube.com/embed/n3McD-676Jw',
-    'https://www.youtube.com/embed/XJ9Vylyk5Uw',
+    /*"https://www.youtube.com/embed/hlWiI4xVXKY",
+    "https://www.youtube.com/embed/UFLyhzlG8FQ",
+    "https://www.youtube.com/embed/n3McD-676Jw",
+    "https://www.youtube.com/embed/XJ9Vylyk5Uw",*/
+    /*"/videos/angry.mp4",
+    "/videos/serenity.mp4",*/
+    "/videos/슬픔2.mp4"
   ];
 
   useEffect(() => {
@@ -109,16 +112,29 @@ function Page1() {
                     {msg.loading ? (
                       <CircularProgress size={64} sx={{ color: '#e5d9fc' }} />
                     ) : (
-                      <iframe
-                        width="100%"
-                        height="350"
-                        src={msg.videoUrl}
-                        title="추천 동영상"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        style={{ border: 'none' }}
-                      ></iframe>
+                      <Box>
+                        {/*
+                        <iframe
+                          width="100%"
+                          height="350"
+                          src={msg.videoUrl}
+                          title="추천 동영상"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          style={{ border: 'none' }}
+                        ></iframe>*/}
+
+                        {/* 로컬 비디오 출력 */}
+                        <video
+                          controls
+                          style={{ borderRadius: '12px', maxWidth: '100%' }}
+                        >
+                          <source src={msg.videoUrl} type="video/mp4" />
+                          브라우저가 video 태그를 지원하지 않습니다.
+                        </video>
+                      </Box>
                     )}
+
                   </Box>
                 </Box>
               )}
